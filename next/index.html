@@ -159,7 +159,7 @@ h2{margin:0;font-size:14px;font-weight:700}
 /* 타임라인(간트형): 소식마다 한 줄, 6주 축. 축의 배경은 주 경계선과 주말 음영 */
 .tl-legend{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin-bottom:12px;font-size:12px;color:var(--muted)}
 .tl-legend .it{display:inline-flex;align-items:center;gap:6px}
-.tl-undated{display:flex;align-items:center;gap:8px;overflow-x:auto;padding:10px 12px;margin-bottom:12px;border:1px dashed color-mix(in srgb,var(--req) 45%,transparent);border-radius:12px;background:color-mix(in srgb,var(--req) 5%,var(--panel))}
+.tl-undated{display:flex;flex-wrap:wrap;align-items:center;gap:8px;overflow-x:auto;padding:10px 12px;margin-bottom:12px;border:1px dashed color-mix(in srgb,var(--req) 45%,transparent);border-radius:12px;background:color-mix(in srgb,var(--req) 5%,var(--panel))}
 .tl-undated .lb{flex:none;display:inline-flex;align-items:center;gap:6px;margin-right:4px;font-size:12px;font-weight:700;color:var(--req)}
 .tl-chip{flex:none;max-width:280px;min-height:32px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--bg);cursor:pointer}
 .tl-chip:hover{background:var(--raise)}
@@ -191,8 +191,10 @@ button.tl-label:hover{background:var(--raise)}
 .tl-mk.late{border-color:var(--late);color:var(--late);background:repeating-linear-gradient(135deg,rgba(248,113,113,.25) 0 4px,var(--panel) 4px 8px)}
 .tl-mk.held{border-style:dashed;border-color:var(--line2);color:var(--muted)}
 .tl-mk.sample{position:static;transform:none;cursor:default}
-.tl-ev{position:absolute;top:11px;z-index:2;display:inline-flex;align-items:center;gap:7px;max-width:240px;height:22px;margin-left:-6px;padding:0 8px 0 0;border:0;background:none;color:var(--text);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer}
+.tl-ev{position:absolute;top:11px;z-index:2;display:inline-flex;align-items:center;gap:7px;max-width:15.4%;height:22px;margin-left:-6px;padding:0 8px 0 0;border:0;background:none;color:var(--text);font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer}
 .tl-ev span{overflow:hidden;text-overflow:ellipsis}
+.tl-label .m .lt{color:var(--late);font-weight:700}
+button.tl-fold{flex-direction:row;align-items:center;justify-content:flex-start;gap:6px;color:var(--muted);font-size:12px;font-weight:600;word-break:keep-all}
 .tl-dia{flex:none;display:inline-block;width:12px;height:12px;border-radius:2px;background:var(--c);transform:rotate(45deg)}
 
 .tl-req{position:absolute;top:17px;z-index:2;width:10px;height:10px;margin-left:-5px;border-radius:50%;border:2px solid var(--req);background:var(--panel)}
@@ -286,6 +288,7 @@ footer p{margin:2px 0}
   .reqs{grid-template-columns:minmax(0,1fr)}
   .tl{--label:132px;--colmin:22px}
   .tl-label{padding:8px 10px}
+  .tl-undated{flex-wrap:nowrap}
   .actions #addBtn{display:none}
   .bottomnav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:6;background:rgba(18,22,31,.97);border-top:1px solid var(--line);padding:4px 4px calc(6px + env(safe-area-inset-bottom))}
   .bottomnav .tab{flex-direction:column;gap:2px;font-size:11px;padding:6px 2px;min-height:52px;justify-content:center}
@@ -436,6 +439,7 @@ footer p{margin:2px 0}
   var view = 'timeline';
   var weekStart = '';
   var tlStart = '';
+  var tlShowDone = false;
   var monthOffset = 0;
 
   var TABS = [
@@ -618,17 +622,33 @@ footer p{margin:2px 0}
 
     var evs = D.posts.filter(function (p) { return p.state === 'event' && inRange(p, ws, we); });
     if (evs.length) {
+      // 행사 이름은 6.5일 폭까지 보이므로, 앞 행사와 7일 안이면 아래 줄로 내린다
+      var evEnd = [];
+      var evMarks = evs.map(function (p) {
+        var k = idx(p.date);
+        var lane = 0;
+        while (evEnd[lane] !== undefined && k - evEnd[lane] < 7) lane++;
+        evEnd[lane] = k;
+        return '<button type="button" class="tl-ev" style="left:' + pct(k + 0.5) + ';top:' + (11 + lane * 26) + 'px;--c:' + esc(chan(p.channel).color) + '" data-i="' + p.i + '"' +
+          ' aria-label="' + esc(p.title) + ', 행사, ' + ko(p.date) + '"><i class="tl-dia"></i><span>' + esc(p.title) + '</span></button>';
+      }).join('');
       c += '<div class="tl-row"><div class="tl-label"><span class="t">' + chip('행사') + '행사</span><span class="m">' + evs.length + '건</span></div>' +
-        '<div class="tl-track">' + todayLine + evs.map(function (p) {
-          return '<button type="button" class="tl-ev" style="left:' + pct(idx(p.date) + 0.5) + ';--c:' + esc(chan(p.channel).color) + '" data-i="' + p.i + '"' +
-            ' aria-label="' + esc(p.title) + ', 행사, ' + ko(p.date) + '"><i class="tl-dia"></i><span>' + esc(p.title) + '</span></button>';
-        }).join('') + '</div></div>';
+        '<div class="tl-track" style="min-height:' + (44 + (evEnd.length - 1) * 26) + 'px">' + todayLine + evMarks + '</div></div>';
     }
 
     // 소식마다 한 줄. 기간 안의 첫 게시일 순서
     var rows = storyGroups(D.posts.filter(function (p) { return p.date && p.state !== 'event'; })).map(function (g) {
       return { all: g.sort(byDate), win: g.filter(function (p) { return inRange(p, ws, we); }) };
     }).filter(function (r) { return r.win.length; }).sort(function (a, b) { return byDate(a.win[0], b.win[0]); });
+    // 모든 채널에 게시를 마치고 마지막 게시일이 지난 소식은 접어 둔다(항목이 많아도 지금 할 일이 먼저 보이게)
+    var finished = rows.filter(function (r) {
+      return r.all.every(function (p) { return p.state === 'done'; }) && r.all[r.all.length - 1].date < D.today;
+    });
+    if (finished.length) {
+      c += '<div class="tl-row"><button type="button" class="tl-label tl-fold" data-tdone aria-expanded="' + tlShowDone + '">' +
+        icon(tlShowDone ? 'left' : 'right', 12) + '게시를 마친 소식 ' + finished.length + '건 ' + (tlShowDone ? '숨기기' : '보기') + '</button><div class="tl-track"></div></div>';
+    }
+    rows = rows.filter(function (r) { return tlShowDone || finished.indexOf(r) === -1; });
     rows.forEach(function (r) {
       // 표시끼리 이틀 안이면 겹치므로 아래 줄로 내린다
       var laneEnd = [];
@@ -652,11 +672,12 @@ footer p{margin:2px 0}
         '--a:' + (fromAsk ? '#FBBF24' : esc(chan(first.channel).color)) + ';--b:' + esc(chan(last.channel).color) + '"></span>' : '';
       var ring = fromAsk && asked >= ws ? '<i class="tl-req" style="left:' + pct(idx(asked) + 0.5) + '" title="' + ko(asked) + ' 요청"></i>' : '';
       var lead = r.win[0];
+      var late = r.all.some(function (p) { return p.state === 'late'; });
       c += '<div class="tl-row"><button type="button" class="tl-label" data-i="' + lead.i + '"><span class="t">' + esc(lead.title || '(제목 없음)') + '</span>' +
-        '<span class="m">' + esc([lead.source || '출처 미정', lead.owner, fromAsk ? ko(asked) + ' 요청' : ''].filter(Boolean).join(', ')) + '</span></button>' +
+        '<span class="m">' + (late ? '<span class="lt">지연</span>, ' : '') + esc([lead.source || '출처 미정', lead.owner, fromAsk ? ko(asked) + ' 요청' : ''].filter(Boolean).join(', ')) + '</span></button>' +
         '<div class="tl-track" style="min-height:' + (44 + (laneEnd.length - 1) * 26) + 'px">' + todayLine + span + ring + marks + '</div></div>';
     });
-    if (!rows.length && !evs.length) c += '<div class="tl-row"><div class="tl-label"><span class="m">이 기간에 게시가 없습니다</span></div><div class="tl-track"></div></div>';
+    if (!rows.length && !evs.length && !finished.length) c += '<div class="tl-row"><div class="tl-label"><span class="m">이 기간에 게시가 없습니다</span></div><div class="tl-track"></div></div>';
     c += '</div></div></div>';
     document.getElementById('v-timeline').innerHTML = h + c;
     if (view === 'timeline') tlScrollToToday();
@@ -845,7 +866,7 @@ footer p{margin:2px 0}
   }
 
   document.addEventListener('click', function (e) {
-    var t = e.target.closest ? e.target.closest('[data-view],[data-nav],[data-tnav],[data-mnav],[data-i],[data-close],[data-open-req],[data-close-req],[data-chan],[data-code-change]') : null;
+    var t = e.target.closest ? e.target.closest('[data-view],[data-nav],[data-tnav],[data-tdone],[data-mnav],[data-i],[data-close],[data-open-req],[data-close-req],[data-chan],[data-code-change]') : null;
     if (!t) return;
     if (t.hasAttribute('data-close')) { document.getElementById('detail').close(); return; }
     if (t.hasAttribute('data-open-req')) { openRequest(); return; }
@@ -857,6 +878,11 @@ footer p{margin:2px 0}
       var n = +t.getAttribute('data-nav');
       weekStart = n === 0 ? monday(D.today) : add(weekStart, 7 * n);
       renderWeek();
+      return;
+    }
+    if (t.hasAttribute('data-tdone')) {
+      tlShowDone = !tlShowDone;
+      renderTimeline();
       return;
     }
     if (t.hasAttribute('data-tnav')) {
